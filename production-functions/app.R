@@ -35,13 +35,6 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
         em("Choose the parameters of your new production function here"),
-      sliderInput("n_alpha",
-        "Output elasticity of capital (alpha):",
-        min = 0.1,
-        max = 0.9,
-        value = 0.4,
-        step = .05
-      ),
       sliderInput("n_A",
         "Total Factor Productivity (A):",
         min = 5,
@@ -55,6 +48,13 @@ ui <- fluidPage(
         max = 200,
         value = 120,
         step = 5
+      ),
+      sliderInput("n_alpha",
+                  "Output elasticity of capital (alpha):",
+                  min = 0.1,
+                  max = 0.9,
+                  value = 0.4,
+                  step = .05
       ),
       em("Compare the outputs of each production function at this specified level of capital"),
       sliderInput("chosen_k",
@@ -76,7 +76,11 @@ ui <- fluidPage(
                     tabPanel("Table",
                              tableOutput("comp_table")),
                     tabPanel("Formula",
-                             uiOutput("formula")))
+                             em("The production function is:"),
+                             uiOutput("formula"),
+                             tableOutput("explanation"),
+                             em("And plugging in the values we get:"),
+                             uiOutput("formula_inputs")))
     )
   )
 )
@@ -91,6 +95,7 @@ server <- function(input, output) {
             # h1('Landing Page'),
             p("Have a look at how changing the parameters of a basic Cobb-Douglas production functions impacts output and changes the shape of the function."),
             p("Click on the 'Table' tab to compare the inputs."),
+            p("Click on the 'Formula' tab to see the values plugged in."),
             p("Mouse over the graphs on the 'Plots' tab to see the different values."),
             a(href="https://en.wikipedia.org/wiki/Cobb%E2%80%93Douglas_production_function", "Learn more about the Cobb-Douglas Production Function")
         ))
@@ -191,14 +196,30 @@ server <- function(input, output) {
   })
   
   output$formula <- renderUI({
-    my_calculated_value <- 5
-    withMathJax(paste0("Use this formula: $$\\hat{A}_{\\small{\\textrm{M€}}} =", my_calculated_value,"$$"))
-    withMathJax(paste0("Use this formula: $$\\(Y = K^{'\alpha}L^{1 - \\alpha}\\) =", my_calculated_value,"$$"))
-    
-    
-    
-    
+    withMathJax(paste0("$$ Y=A K^{alpha} N^{1 - alpha} $$"))
   })
+  
+  output$formula_inputs <- renderUI({
+    
+    n_y <- df_line() %>% select(n_y) %>% pull()
+    
+    n_beta = 1 - input$n_alpha
+    
+    withMathJax(paste0("$$", n_y, " = ", input$n_A, "(", input$chosen_k, ")", "^{", input$n_alpha, "}", 
+                       "(", input$n_N, ")", "^{", n_beta, "} $$"))
+  })
+  
+  output$explanation <- function() {
+    
+    tibble(`Where:` = c("Y = Total production",
+                     "A = Total Factor Productivity (TFP)",
+                     "K = Capital input",
+                     "N = Labour input",
+                     "alpha = Output elasticity of capital")) %>% 
+      knitr::kable("html")
+    
+    
+  }
 }
 
 # Run the application

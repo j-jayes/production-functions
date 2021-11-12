@@ -1,0 +1,38 @@
+---
+title: "Untitled"
+author: "JJayes"
+date: "11/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+### Purpose
+
+Making an interactive app that allows you to interact with the different elements of a production function.
+
+Production function takes the form Y = A * K^alpha * N^1-alpha where alpha is the capital share of output.
+
+```{r}
+N <- 143.9
+A <- 25.11
+
+alpha <- 0.2
+
+
+df <- tibble(k = 1:50)
+
+df %>% 
+  mutate(k_alpha = k^alpha,
+         y = A*k_alpha*(N^(1-alpha))) %>% 
+  ggplot(aes(k, y)) +
+  geom_line() +
+  geom_abline() +
+  labs(x = "Level of capital",
+       y = "Level of output")
+```
+
