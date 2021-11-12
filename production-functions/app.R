@@ -6,6 +6,8 @@ library(DT)
 library(plotly)
 library(kableExtra)
 
+theme_set(theme_light())
+
 thematic_shiny()
 theme_update(text = element_text(size = 17))
 
@@ -24,7 +26,7 @@ df <- df %>%
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-    theme = bslib::bs_theme(bootswatch = "minty", font_scale = 1.5),
+    theme = bslib::bs_theme(bootswatch = "minty", font_scale = 1.3),
 
   # Application title
   titlePanel("Production function sandpit"),
@@ -32,26 +34,27 @@ ui <- fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-        em("Choose the characteristics of your new production function here"),
+        em("Choose the parameters of your new production function here"),
       sliderInput("n_alpha",
-        "Capital share of income (alpha):",
+        "Output elasticity of capital (alpha):",
         min = 0.1,
         max = 0.9,
-        value = 0.3,
+        value = 0.4,
         step = .05
       ),
       sliderInput("n_A",
-        "Level of Total Factor Productivity (A):",
+        "Total Factor Productivity (A):",
         min = 5,
         max = 50,
         value = 25,
         step = 5
       ),
       sliderInput("n_N",
-        "Level of labour (N):",
+        "Labour (N):",
         min = 100,
-        max = 300,
-        value = 145
+        max = 200,
+        value = 120,
+        step = 5
       ),
       em("Compare the outputs of each production function at this specified level of capital"),
       sliderInput("chosen_k",
@@ -71,13 +74,28 @@ ui <- fluidPage(
                              plotlyOutput("comp_plot"),
                              plotlyOutput("levels_plot")),
                     tabPanel("Table",
-                             tableOutput("comp_table")))
+                             tableOutput("comp_table")),
+                    tabPanel("Formula",
+                             uiOutput("formula")))
     )
   )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    observeEvent(once = TRUE,ignoreNULL = FALSE, ignoreInit = FALSE, eventExpr = df_filtered, { 
+        # event will be called when histdata changes, which only happens once, when it is initially calculated
+        showModal(modalDialog(
+            title = "Production function sandpit", 
+            # h1('Landing Page'),
+            p("Have a look at how changing the parameters of a basic Cobb-Douglas production functions impacts output and changes the shape of the function."),
+            p("Click on the 'Table' tab to compare the inputs."),
+            p("Mouse over the graphs on the 'Plots' tab to see the different values."),
+            a(href="https://en.wikipedia.org/wiki/Cobb%E2%80%93Douglas_production_function", "Learn more about the Cobb-Douglas Production Function")
+        ))
+    })
+    
   output$comp_plot <- renderPlotly({
       
     g <- df_filtered() %>%
@@ -91,8 +109,8 @@ server <- function(input, output) {
           theme(legend.position = "top") +
       labs(
           title = "Production functions",
-        x = "Level of capital",
-        y = "Level of output",
+        x = "Level of capital (K)",
+        y = "Level of output (Y)",
         colour = NULL
       )
     
@@ -111,8 +129,8 @@ server <- function(input, output) {
       geom_col() +
           theme(legend.position = "none") +
           labs(title = glue::glue("Output at level of capital { input$chosen_k }"),
-               x = "Level of capital (K)",
-               y = "")
+               x = NULL,
+               y = glue::glue("Output Y when K = { input$chosen_k }"))
 
     ggplotly(f)
   })
@@ -135,20 +153,21 @@ server <- function(input, output) {
              labour = c(N, input$n_N),
              capital = c(input$chosen_k, input$chosen_k),
              output = c(y, n_y)) %>% 
-          mutate(across(c(alpha, one_minus_alpha), scales::percent)) %>% 
-          mutate(across(where(is.numeric), ~ scales::number(.x)))
+          mutate(across(c(alpha, one_minus_alpha), scales::percent),
+                 across(c(tfp, labour, capital), ~ scales::number(.x)),
+                 across(output, ~ scales::dollar(.x)))
       
       tbl <- tbl %>% 
           pivot_longer(-fn) %>% 
           pivot_wider(names_from = "fn") %>% 
           select(-name)
       
-      rownames(tbl) <- c("Capital share of income",
-                         "Labour share of income",
-                         "Total Factor Productivity",
-                         "Labour",
-                         "Capital",
-                         "Output")
+      rownames(tbl) <- c("Output elasticity of capital (alpha)",
+                         "Output elasticity of labour (1-alpha)",
+                         "Total Factor Productivity (TFP)",
+                         "Labour (N)",
+                         "Capital (K)",
+                         "Output (Y)")
       
       tbl %>% 
           knitr::kable("html") %>% 
@@ -169,6 +188,16 @@ server <- function(input, output) {
   df_line <- reactive({
     df_filtered() %>%
       filter(k == input$chosen_k)
+  })
+  
+  output$formula <- renderUI({
+    my_calculated_value <- 5
+    withMathJax(paste0("Use this formula: $$\\hat{A}_{\\small{\\textrm{M€}}} =", my_calculated_value,"$$"))
+    withMathJax(paste0("Use this formula: $$\\(Y = K^{'\alpha}L^{1 - \\alpha}\\) =", my_calculated_value,"$$"))
+    
+    
+    
+    
   })
 }
 
